@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -70,6 +71,38 @@ func (cli *Client) Get(ctx context.Context, path string, params url.Values, p in
 		return err
 	}
 	cli.LatestRateLimit = rateLimit
+
+	if !(res.StatusCode >= http.StatusOK && res.StatusCode < http.StatusMultipleChoices) {
+		reason, err := ioutil.ReadAll(res.Body)
+		if err != nil || len(reason) == 0 {
+			return fmt.Errorf("Request failed: Status=%d (no reason)", res.StatusCode)
+		}
+		return fmt.Errorf("Request failed: Status=%d, Error= %s", res.StatusCode, string(reason))
+	}
+
+	if err := json.NewDecoder(res.Body).Decode(p); err != nil {
+		return fmt.Errorf("Failed to parse the response. (%s)", err.Error())
+	}
+
+	return nil
+}
+
+// Post is an implementation of the HTTP POST method.
+func (cli *Client) Post(ctx context.Context, path string, params url.Values, p interface{}) error {
+	endpoint := fmt.Sprintf("%s/%s", cli.BaseURL, path)
+	payload := strings.NewReader(params.Encode())
+
+	req, err := http.NewRequest(http.MethodGet, endpoint, payload)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := cli.doRequest(ctx, req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
 
 	if !(res.StatusCode >= http.StatusOK && res.StatusCode < http.StatusMultipleChoices) {
 		reason, err := ioutil.ReadAll(res.Body)
