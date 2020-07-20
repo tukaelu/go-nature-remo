@@ -45,7 +45,7 @@ type devices struct {
 // GetDevices provides implementation of GET /devices
 func (api *devices) GetDevices(ctx context.Context) ([]*Device, error) {
 	var d []*Device
-	if err := api.cli.Get(ctx, "devices", nil, d); err != nil {
+	if err := api.cli.Get(ctx, "devices", nil, &d); err != nil {
 		return nil, err
 	}
 	return d, nil
